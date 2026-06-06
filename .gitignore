@@ -1,0 +1,47 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env*.local
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# vscode extension build
+packages/vscode/*.vsix
+
+# misc
+coverage/
+.cache/
+
+# test scratch
+.scratch-test/
+
+# npm pack output
+*.tgz
+
+# screenshots
+fixthis.png
+*.screenshot.png
+
+.scratch-agent/

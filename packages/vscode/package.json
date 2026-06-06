@@ -1,0 +1,66 @@
+{
+  "name": "stackai-vscode",
+  "displayName": "StackAI",
+  "description": "AI coding agent (StackAI) inside VSCode",
+  "version": "0.1.0",
+  "publisher": "stackai",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["AI", "Programming Languages"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "stackai.setApiKey",
+        "title": "StackAI: Set API Key"
+      },
+      {
+        "command": "stackai.openPanel",
+        "title": "StackAI: Open Panel"
+      },
+      {
+        "command": "stackai.runOnFile",
+        "title": "StackAI: Run on File"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "stackai.openPanel",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "stackai",
+          "title": "StackAI",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "stackai": [
+        {
+          "id": "stackai.panel",
+          "name": "StackAI",
+          "type": "webview"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "@types/vscode": "^1.90.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.2"
+  }
+}
