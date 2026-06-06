@@ -1,5 +1,6 @@
 ---
-description: An AI coding agent that lives in your terminal.
+icon: hand-wave
+description: An AI coding agent that lives in your terminal — and on the web.
 ---
 
 # Welcome to StackAI
@@ -12,17 +13,31 @@ stackai login
 stackai
 ```
 
+{% hint style="success" %}
+**Free to start** — 50 requests/day, no credit card. Sign in with X at [usestackai.com](https://usestackai.com) to grab a key.
+{% endhint %}
+
 ### Where to start
 
-* [Getting started](getting-started.md) — install, log in, first run
-* [CLI reference](cli-reference.md) — every command
-* [Project context (STACKAI.md)](project-context.md) — give the agent rules
-* [Vibe](vibe.md) — build on the web
-* [Troubleshooting](troubleshooting.md) — common issues
+{% content-ref url="getting-started.md" %}
+[getting-started.md](getting-started.md)
+{% endcontent-ref %}
+
+{% content-ref url="cli-reference.md" %}
+[cli-reference.md](cli-reference.md)
+{% endcontent-ref %}
+
+{% content-ref url="vibe.md" %}
+[vibe.md](vibe.md)
+{% endcontent-ref %}
+
+{% content-ref url="project-context.md" %}
+[project-context.md](project-context.md)
+{% endcontent-ref %}
 
 ### What makes it different
 
 * The agent runs **locally** — it works on the real files in your project.
 * **Interactive mode** keeps full context across a conversation.
 * **Codebase-aware** with built-in search (grep) and file finding (glob).
-* Free to start: 50 requests/day.
+* Powered by **Xiaomi MiMo v2.5 Pro** with a **1M token** context window.

@@ -1,6 +1,13 @@
+---
+icon: rocket
+description: Install, log in, and run your first agent in under two minutes.
+---
+
 # Getting started
 
-## 1. Install
+{% stepper %}
+{% step %}
+### Install
 
 Requires **Node.js 20+**.
 
@@ -8,22 +15,28 @@ Requires **Node.js 20+**.
 npm install -g stackai
 ```
 
-Verify:
+Verify it's on your PATH:
 
 ```bash
 stackai --version
 ```
 
-> **PowerShell:** if you see "running scripts is disabled", run once:
-> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+{% hint style="info" %}
+**Windows / PowerShell:** if you see *"running scripts is disabled on this system"*, run once (no admin needed):
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+{% endhint %}
+{% endstep %}
 
-## 2. Get an API key
+{% step %}
+### Get an API key
 
 1. Go to [usestackai.com](https://usestackai.com) and **sign in with X**.
 2. Open the **Dashboard** → **Create key**.
 3. Copy the key (`sk_live_…`) — it's shown only once.
+{% endstep %}
 
-## 3. Log in
+{% step %}
+### Log in
 
 ```bash
 stackai login
@@ -34,22 +47,32 @@ Paste your key when prompted (it's masked). Check it worked:
 ```bash
 stackai whoami
 ```
+{% endstep %}
 
-## 4. Use it
+{% step %}
+### Use it
 
-Open an interactive session (recommended):
-
+{% tabs %}
+{% tab title="Interactive (recommended)" %}
 ```bash
 cd your-project
 stackai
 ```
 
-Type what you want, e.g. *"add a dark mode toggle to the navbar"*. Press Enter. `/exit` to quit.
+Type what you want, e.g. *"add a dark mode toggle to the navbar"*, and press Enter. Context is kept across messages. Type `/exit` to quit.
+{% endtab %}
 
-Or run a one-shot command:
-
+{% tab title="One-shot" %}
 ```bash
 stackai "create a REST endpoint for users with validation"
 ```
 
-That's it. Next: give the agent [project rules](project-context.md) so it codes to your conventions.
+Runs once on the current directory, prints what it changed, then exits.
+{% endtab %}
+{% endtabs %}
+{% endstep %}
+{% endstepper %}
+
+{% hint style="success" %}
+**Next:** give the agent [project rules](project-context.md) so it codes to your conventions automatically.
+{% endhint %}

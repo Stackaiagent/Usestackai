@@ -1,4 +1,11 @@
+---
+icon: terminal
+description: Every command, flag, and tool the StackAI CLI gives you.
+---
+
 # CLI reference
+
+## Commands
 
 | Command | What it does |
 |---|---|
@@ -16,20 +23,23 @@
 
 Inside a run, the agent has these tools:
 
-* **read_file / write_file / edit_file** — read and modify files
-* **list_files / create_dir** — explore and create folders
-* **search_files** — regex content search across the project (grep)
-* **find_files** — find files by glob pattern (e.g. `src/**/*.ts`)
+| Tool | Purpose |
+|---|---|
+| `read_file` / `write_file` / `edit_file` | Read and modify files |
+| `list_files` / `create_dir` | Explore and create folders |
+| `search_files` | Regex content search across the project (grep) |
+| `find_files` | Find files by glob pattern (e.g. `src/**/*.ts`) |
 
-It works only inside your current directory and shows each action live
-(`● Write(file)`, `● Edit(file)`, etc.) with a diff preview.
+It works **only inside your current directory** and shows each action live (`● Write(file)`, `● Edit(file)`, …) with a diff preview.
 
 ## Config
 
-Your key is saved to `~/.stackai/config.json`. Override the API URL per-machine
-with the `STACKAI_API_URL` environment variable.
+Your key is saved to `~/.stackai/config.json`. Override the API URL per-machine with the `STACKAI_API_URL` environment variable.
 
-## Notes
+{% hint style="warning" %}
+Each step the agent takes counts as **one request** against your daily limit. A complex multi-file task can use several.
+{% endhint %}
 
-* Each step the agent takes counts as one request against your daily limit.
-* Interactive mode needs a real terminal (not a piped/non-TTY shell).
+{% hint style="info" %}
+Interactive mode needs a **real terminal (TTY)**. In a piped or non-TTY shell, use a one-shot instead: `stackai "your prompt"`.
+{% endhint %}

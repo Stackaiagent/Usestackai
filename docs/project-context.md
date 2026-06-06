@@ -1,9 +1,15 @@
+---
+icon: book
+description: Teach the agent your stack and conventions once — with STACKAI.md.
+---
+
 # Project context (STACKAI.md)
 
-Drop a **`STACKAI.md`** file in the root of your project and StackAI reads it
-automatically at the start of every session, then follows it. It's the easiest
-way to teach the agent your stack and conventions — no need to re-explain each
-time. (`AGENTS.md` also works.)
+Drop a **`STACKAI.md`** file in the root of your project and StackAI reads it automatically at the start of every session, then follows it. It's the easiest way to teach the agent your stack and conventions — no need to re-explain each time.
+
+{% hint style="info" %}
+`AGENTS.md` works too — if both exist, `STACKAI.md` wins.
+{% endhint %}
 
 ## Example
 
@@ -19,7 +25,7 @@ time. (`AGENTS.md` also works.)
 
 ## Tips
 
-* Keep it short and specific — rules, conventions, "don't touch X".
-* Mention how to run tests / build so the agent knows your workflow.
-* List directories the agent should avoid.
+* Keep it **short and specific** — rules, conventions, "don't touch X".
+* Mention how to **run tests / build** so the agent knows your workflow.
+* List directories the agent should **avoid**.
 * It's plain Markdown — anything you'd tell a new teammate works here.

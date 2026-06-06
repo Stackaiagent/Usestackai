@@ -44,4 +44,9 @@ coverage/
 fixthis.png
 *.screenshot.png
 
+# promo media (kept local — never commit)
+*.mp4
+*.mov
+*.webm
+
 .scratch-agent/
