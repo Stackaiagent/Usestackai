@@ -299,20 +299,20 @@ export default function HomePage() {
         <p className="cta-sub">Free to start. No credit card. Cancel anytime.</p>
         <div className="cta-btns">
           <Link href="/login" className="btn-accent btn-cta-big">Start for free</Link>
-          <Link href="/install" className="btn-outline btn-outline-big">Read the docs</Link>
+          <a href="https://docs.usestackai.com" className="btn-outline btn-outline-big">Read the docs</a>
         </div>
       </div>
 
       {/* FOOTER */}
       <div style={{ borderTop: "1px solid var(--gray3)" }}>
         <footer className="footer">
-          <span className="f-left">© 2025 StackAI</span>
+          <span className="f-left">© 2026 StackAI</span>
           <div className="f-links">
             <a href="https://docs.usestackai.com">Docs</a>
             <a href="https://github.com/Stackaiagent/Usestackai">GitHub</a>
-            <a href="#">X / Twitter</a>
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
+            <a href="https://x.com/askstackai">X / Twitter</a>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
           </div>
         </footer>
       </div>
