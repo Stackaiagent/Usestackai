@@ -35,7 +35,7 @@ export default function HomePage() {
           <a href="#vibecoding">Vibe Coding</a>
           <a href="#agent">Build Agent</a>
           <a href="#install">Install</a>
-          <Link href="/install">Docs</Link>
+          <a href="https://docs.usestackai.com">Docs</a>
         </div>
         <div className="nav-right">
           <UserMenu landing />
@@ -308,7 +308,7 @@ export default function HomePage() {
         <footer className="footer">
           <span className="f-left">© 2025 StackAI</span>
           <div className="f-links">
-            <Link href="/install">Docs</Link>
+            <a href="https://docs.usestackai.com">Docs</a>
             <a href="https://github.com/Stackaiagent/Usestackai">GitHub</a>
             <a href="#">X / Twitter</a>
             <a href="#">Privacy</a>
