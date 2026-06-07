@@ -1,4 +1,5 @@
 import os from "node:os";
+import http from "node:http";
 import path from "node:path";
 import { promises as fs } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -152,8 +153,20 @@ async function main(): Promise<void> {
     console.error("[bot] error:", err.error);
   });
 
+  // Minimal health server so Railway (which expects a bound port) keeps the
+  // worker alive and we can curl it to confirm the bot is up.
+  const port = Number(process.env.PORT) || 3000;
+  http
+    .createServer((_req, res) => {
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("StackAI bot ok");
+    })
+    .listen(port, () => console.log(`[bot] health server on :${port}`));
+
   console.log("[bot] starting (long polling)…");
-  await bot.start();
+  await bot.start({
+    onStart: (me) => console.log(`[bot] online as @${me.username}`),
+  });
 }
 
 main().catch((err: unknown) => {
