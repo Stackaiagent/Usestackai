@@ -16,6 +16,10 @@
 
 * [Vibe](vibe.md)
 
+## Telegram
+
+* [Telegram bot](telegram.md)
+
 ## Help
 
 * [Troubleshooting](troubleshooting.md)

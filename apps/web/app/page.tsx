@@ -9,7 +9,7 @@ const NAV_LIT = new Set([1, 2, 3, 5, 6, 7]);
 const MARQUEE = [
   "CLI agent", "VSCode extension", "Vibecoding", "File read/write",
   "MiMo v2.5 Pro", "1M context", "API keys", "X auth",
-  "Rate limiting", "Download .zip", "CLI agent", "VSCode extension",
+  "Rate limiting", "Telegram bot", "Crypto skills", "Download .zip", "CLI agent", "VSCode extension",
   "Vibecoding", "File read/write", "MiMo v2.5 Pro", "1M context",
 ];
 
