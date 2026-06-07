@@ -7,7 +7,7 @@ description: Use StackAI from Telegram — crypto skills (token reports, rug che
 
 StackAI is on Telegram. Link your account once, then ask about any token, market, or wallet — right from chat. Perfect for quick crypto checks on the go, no terminal needed.
 
-> Bot: [@YOUR_BOT](https://t.me/YOUR_BOT) <!-- replace with your bot's handle -->
+> Bot: [@StackAIagent_bot](https://t.me/StackAIagent_bot)
 
 {% hint style="info" %}
 Telegram runs the **skill** side of StackAI (crypto queries) — not the full coding agent. Reading and editing code lives in the [CLI](getting-started.md) and [web](vibe.md).
