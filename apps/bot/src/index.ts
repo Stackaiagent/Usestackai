@@ -82,8 +82,21 @@ async function main(): Promise<void> {
   await skills.load(SKILL_DIRS);
   console.log(`[bot] loaded ${skills.size} skill(s)`);
 
+  const TELEGRAM_STYLE = [
+    "You are replying inside a Telegram chat. Format for chat, NOT for a document:",
+    "- Plain text only. Do NOT use markdown tables, ### headings, bold/italic syntax, or horizontal rules (---) — they render as literal junk here.",
+    "- Be short and scannable: lead with the answer, short lines, at most a few simple bullets like •.",
+    "- Don't list all your capabilities unless asked. For a greeting, reply in one or two lines and invite a question.",
+    "- Reply in the same language the user wrote in.",
+  ].join("\n");
+
   const llm = new LLMClient({ apiKey: MIMO_API_KEY });
-  const runner = new AgentRunner({ llm, skills, maxSteps: 12 });
+  const runner = new AgentRunner({
+    llm,
+    skills,
+    maxSteps: 12,
+    systemExtra: TELEGRAM_STYLE,
+  });
 
   const bot = new Bot(TOKEN);
 

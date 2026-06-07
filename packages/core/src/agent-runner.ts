@@ -26,6 +26,8 @@ export interface AgentRunnerOptions {
   maxSteps?: number;
   /** Optional skill registry — its index is injected and `load_skill` enabled. */
   skills?: SkillRegistry;
+  /** Extra system instruction appended last (e.g. surface-specific formatting). */
+  systemExtra?: string;
 }
 
 export interface RunOptions {
@@ -178,11 +180,13 @@ export class AgentRunner {
   private readonly llm: LLMClient;
   private readonly maxSteps: number;
   private readonly skills?: SkillRegistry;
+  private readonly systemExtra?: string;
 
   constructor(options: AgentRunnerOptions) {
     this.llm = options.llm;
     this.maxSteps = options.maxSteps ?? 50;
     this.skills = options.skills;
+    this.systemExtra = options.systemExtra;
   }
 
   async run({ prompt, cwd, onStep, confirm }: RunOptions): Promise<RunResult> {
@@ -224,6 +228,9 @@ export class AgentRunner {
     }
     if (this.skills?.size) {
       messages.push({ role: "system", content: this.skills.indexForPrompt() });
+    }
+    if (this.systemExtra?.trim()) {
+      messages.push({ role: "system", content: this.systemExtra.trim() });
     }
     return messages;
   }
