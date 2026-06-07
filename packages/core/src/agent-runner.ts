@@ -5,6 +5,7 @@ import type {
 } from "openai/resources/chat/completions";
 import { LLMClient } from "./llm-client.js";
 import { FileAgent } from "./file-agent.js";
+import { SkillRegistry } from "./skill-loader.js";
 import { SYSTEM_PROMPT } from "./system-prompt.js";
 import type { OnStep, ConfirmRun } from "./types.js";
 
@@ -23,6 +24,8 @@ export interface AgentRunnerOptions {
   llm: LLMClient;
   /** Hard ceiling on tool-call iterations. Defaults to 50. */
   maxSteps?: number;
+  /** Optional skill registry — its index is injected and `load_skill` enabled. */
+  skills?: SkillRegistry;
 }
 
 export interface RunOptions {
@@ -151,6 +154,21 @@ const TOOLS: ChatCompletionTool[] = [
   },
 ];
 
+/** Advertised only when a SkillRegistry with at least one skill is present. */
+const LOAD_SKILL_TOOL: ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "load_skill",
+    description:
+      "Load the full runbook for a named skill from the skills index, then follow its instructions. Call this when the user's request matches an available skill.",
+    parameters: {
+      type: "object",
+      properties: { name: { type: "string" } },
+      required: ["name"],
+    },
+  },
+};
+
 /**
  * Main execution loop. Sends the prompt to MiMo, executes any requested file
  * tools, feeds the results back, and repeats until the model stops calling
@@ -159,10 +177,12 @@ const TOOLS: ChatCompletionTool[] = [
 export class AgentRunner {
   private readonly llm: LLMClient;
   private readonly maxSteps: number;
+  private readonly skills?: SkillRegistry;
 
   constructor(options: AgentRunnerOptions) {
     this.llm = options.llm;
     this.maxSteps = options.maxSteps ?? 50;
+    this.skills = options.skills;
   }
 
   async run({ prompt, cwd, onStep, confirm }: RunOptions): Promise<RunResult> {
@@ -202,6 +222,9 @@ export class AgentRunner {
         // file not present — ignore
       }
     }
+    if (this.skills?.size) {
+      messages.push({ role: "system", content: this.skills.indexForPrompt() });
+    }
     return messages;
   }
 
@@ -216,9 +239,10 @@ export class AgentRunner {
     onStep?: OnStep,
     confirm?: ConfirmRun,
   ): Promise<RunResult> {
+    const tools = this.skills?.size ? [...TOOLS, LOAD_SKILL_TOOL] : TOOLS;
     for (let step = 1; step <= this.maxSteps; step++) {
       const { content, toolCalls } = await this.llm.streamChat(messages, {
-        tools: TOOLS,
+        tools,
         temperature: 0,
         onToken: (text) => onStep?.({ type: "token", text }),
       });
@@ -350,6 +374,15 @@ export class AgentRunner {
         if (stderr.trim()) parts.push(stderr.trimEnd());
         parts.push(`[exit ${exitCode}]`);
         return parts.join("\n");
+      }
+      case "load_skill": {
+        if (!this.skills) return "Error: no skills are available.";
+        const skill = await this.skills.read(str(args.name));
+        if (!skill) {
+          const avail = this.skills.list().map((s) => s.name).join(", ");
+          return `Error: no skill named "${str(args.name)}". Available: ${avail || "(none)"}`;
+        }
+        return skill.body;
       }
       default:
         return `Error: unknown tool ${name}`;

@@ -2,6 +2,8 @@ export { LLMClient } from "./llm-client.js";
 export type { LLMClientOptions, ChatOptions } from "./llm-client.js";
 export { FileAgent } from "./file-agent.js";
 export type { CommandResult } from "./file-agent.js";
+export { SkillRegistry } from "./skill-loader.js";
+export type { SkillMeta, LoadedSkill } from "./skill-loader.js";
 export { AgentRunner, AgentSession } from "./agent-runner.js";
 export type {
   AgentRunnerOptions,

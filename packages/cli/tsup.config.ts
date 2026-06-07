@@ -1,4 +1,6 @@
 import { defineConfig } from "tsup";
+import { cp } from "node:fs/promises";
+import path from "node:path";
 
 /**
  * Bundle the CLI into a single self-contained file. @stackai/core (a workspace
@@ -17,4 +19,11 @@ export default defineConfig({
   external: ["react", "ink", "ink-spinner", "ink-text-input", "openai"],
   banner: { js: "#!/usr/bin/env node" },
   outDir: "dist",
+  // Copy the built-in skills (packages/skills) next to the bundle so the
+  // published package ships them. The CLI resolves them at dist/skills.
+  async onSuccess() {
+    await cp(path.resolve("../skills"), path.resolve("dist/skills"), {
+      recursive: true,
+    });
+  },
 });

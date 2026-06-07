@@ -78,6 +78,10 @@ function toolEntries(step: Extract<AgentStep, { type: "tool_call" }>): Entry[] {
       return [
         { kind: "tool", color: ACCENT, label: `Run(${clip(String(args.command ?? ""), 60)})` },
       ];
+    case "load_skill":
+      return [
+        { kind: "tool", color: ACCENT, label: `Skill(${String(args.name ?? "")})` },
+      ];
     default:
       return [{ kind: "tool", color: ACCENT, label: step.name }];
   }
@@ -113,6 +117,9 @@ export function applyStep(entries: Entry[], step: AgentStep): Entry[] {
       const empty = /^\(no /.test(step.detail);
       const n = empty ? 0 : splitLines(step.detail).length;
       return [...entries, { kind: "sub", color: "gray", text: `${n} results` }];
+    }
+    if (step.name === "load_skill") {
+      return [...entries, { kind: "sub", color: "gray", text: "loaded" }];
     }
     if (step.name === "run_command") {
       // Drop the leading "$ <command>" echo (already shown in the header);

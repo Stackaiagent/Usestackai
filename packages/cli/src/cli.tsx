@@ -1,13 +1,30 @@
 import React from "react";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { render } from "ink";
-import { LLMClient, AgentRunner } from "@stackai/core";
+import { LLMClient, AgentRunner, SkillRegistry } from "@stackai/core";
 import { readConfig, writeConfig, clearConfig, DEFAULT_API_URL } from "./config.js";
 import { ApiClient } from "./api.js";
 import { RunView } from "./ui/run-view.js";
 import { Interactive } from "./ui/interactive.js";
 import { LoginView } from "./ui/login-view.js";
 
-const VERSION = "0.1.8";
+const VERSION = "0.1.9";
+
+// Skills ship bundled next to the CLI (dist/skills) and users can install more
+// into ~/.stackai/skills. User skills override built-ins on a name clash.
+const BUILTIN_SKILLS_DIR = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "skills",
+);
+const USER_SKILLS_DIR = path.join(os.homedir(), ".stackai", "skills");
+
+async function loadSkills(): Promise<SkillRegistry> {
+  const skills = new SkillRegistry();
+  await skills.load([BUILTIN_SKILLS_DIR, USER_SKILLS_DIR]);
+  return skills;
+}
 
 const HELP = `
   StackAI — AI coding agent in your terminal
@@ -18,6 +35,7 @@ const HELP = `
     $ stackai login                Log in (prompts for your API key)
     $ stackai login <api_key>      Log in directly
     $ stackai whoami               Show current user + usage
+    $ stackai skill                List available skills
     $ stackai logout               Remove your saved API key
     $ stackai --help
     $ stackai --version
@@ -74,6 +92,19 @@ async function main(): Promise<void> {
     return;
   }
 
+  // skill — list available skills (built-in + ~/.stackai/skills). No auth needed.
+  if (first === "skill") {
+    const skills = await loadSkills();
+    const items = skills.list();
+    if (!items.length) {
+      console.log("No skills installed.");
+    } else {
+      console.log(`Skills (${items.length}):`);
+      for (const s of items) console.log(`  ${s.name} — ${s.description}`);
+    }
+    return;
+  }
+
   // auth — advanced: save key with a custom API URL.
   if (first === "auth") {
     const key = args[1];
@@ -115,7 +146,7 @@ async function main(): Promise<void> {
     apiKey: config.apiKey,
     baseURL: `${config.apiUrl}/api/v1`,
   });
-  const runner = new AgentRunner({ llm });
+  const runner = new AgentRunner({ llm, skills: await loadSkills() });
   const cwd = process.cwd();
 
   if (!first) {

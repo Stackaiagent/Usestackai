@@ -49,4 +49,7 @@ fixthis.png
 *.mov
 *.webm
 
+# internal planning / strategy notes (local only — not for public repo)
+planning/
+
 .scratch-agent/
