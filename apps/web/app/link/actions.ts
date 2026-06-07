@@ -10,6 +10,21 @@ interface LinkResult {
 
 const CODE_TTL_MS = 15 * 60 * 1000;
 
+/** Best-effort confirmation DM to the user in Telegram once linking succeeds. */
+async function notifyTelegram(chatId: string, text: string): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    });
+  } catch {
+    // never fail the link because the notification didn't send
+  }
+}
+
 /** Consume a Telegram link code and attach its telegram_id to the signed-in user. */
 export async function linkTelegram(code: string): Promise<LinkResult> {
   const session = await auth();
@@ -50,8 +65,14 @@ export async function linkTelegram(code: string): Promise<LinkResult> {
   }
 
   await supabaseAdmin.from("telegram_link_codes").delete().eq("code", code);
+
+  await notifyTelegram(
+    row.telegram_id,
+    `✅ Linked to StackAI as @${session.user.username ?? "your account"}!\n\nYou're all set — ask me about any token, market, or wallet. Try: "what's trending on base?"`,
+  );
+
   return {
     ok: true,
-    message: `Linked${row.telegram_username ? " @" + row.telegram_username : ""}! Head back to Telegram and start chatting.`,
+    message: `Linked${row.telegram_username ? " @" + row.telegram_username : ""}! Head back to Telegram — I just sent you a confirmation there.`,
   };
 }
