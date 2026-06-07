@@ -28,6 +28,8 @@ export interface AgentRunnerOptions {
   skills?: SkillRegistry;
   /** Extra system instruction appended last (e.g. surface-specific formatting). */
   systemExtra?: string;
+  /** Extra env vars injected into every run_command (e.g. BANKR_API_KEY). */
+  env?: Record<string, string>;
 }
 
 export interface RunOptions {
@@ -181,12 +183,14 @@ export class AgentRunner {
   private readonly maxSteps: number;
   private readonly skills?: SkillRegistry;
   private readonly systemExtra?: string;
+  private readonly env?: Record<string, string>;
 
   constructor(options: AgentRunnerOptions) {
     this.llm = options.llm;
     this.maxSteps = options.maxSteps ?? 50;
     this.skills = options.skills;
     this.systemExtra = options.systemExtra;
+    this.env = options.env;
   }
 
   async run({ prompt, cwd, onStep, confirm }: RunOptions): Promise<RunResult> {
@@ -375,7 +379,9 @@ export class AgentRunner {
         if (!approved) {
           return "Command was not run — the user declined (or no approval handler is available). Do not retry it; continue without running it.";
         }
-        const { stdout, stderr, exitCode } = await files.runCommand(command);
+        const { stdout, stderr, exitCode } = await files.runCommand(command, {
+          env: this.env,
+        });
         const parts = [`$ ${command}`];
         if (stdout.trim()) parts.push(stdout.trimEnd());
         if (stderr.trim()) parts.push(stderr.trimEnd());

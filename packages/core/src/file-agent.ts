@@ -174,13 +174,19 @@ export class FileAgent {
    * model should read, not a thrown error). Output is bounded by maxBuffer and
    * the command is killed after `timeoutMs`.
    */
-  async runCommand(command: string, timeoutMs = 120_000): Promise<CommandResult> {
+  async runCommand(
+    command: string,
+    opts: { env?: Record<string, string>; timeoutMs?: number } = {},
+  ): Promise<CommandResult> {
     try {
       const { stdout, stderr } = await execAsync(command, {
         cwd: this.root,
-        timeout: timeoutMs,
+        timeout: opts.timeoutMs ?? 120_000,
         maxBuffer: 10 * 1024 * 1024,
         windowsHide: true,
+        // Extra env (e.g. an injected BANKR_API_KEY) is merged in so a skill's
+        // script can read a secret WITHOUT the model ever seeing the literal.
+        ...(opts.env ? { env: { ...process.env, ...opts.env } } : {}),
       });
       return { stdout, stderr, exitCode: 0 };
     } catch (err) {
@@ -192,7 +198,7 @@ export class FileAgent {
         message?: string;
       };
       const stderr = e.killed
-        ? `Command timed out after ${timeoutMs}ms`
+        ? `Command timed out after ${opts.timeoutMs ?? 120_000}ms`
         : (e.stderr ?? e.message ?? "");
       return {
         stdout: e.stdout ?? "",

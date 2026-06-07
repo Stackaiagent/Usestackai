@@ -4,13 +4,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { render } from "ink";
 import { LLMClient, AgentRunner, SkillRegistry } from "@stackai/core";
-import { readConfig, writeConfig, clearConfig, DEFAULT_API_URL } from "./config.js";
+import { readConfig, writeConfig, clearConfig, setBankrKey, DEFAULT_API_URL } from "./config.js";
 import { ApiClient } from "./api.js";
 import { RunView } from "./ui/run-view.js";
 import { Interactive } from "./ui/interactive.js";
 import { LoginView } from "./ui/login-view.js";
 
-const VERSION = "0.1.9";
+const VERSION = "0.1.10";
 
 // Skills ship bundled next to the CLI (dist/skills) and users can install more
 // into ~/.stackai/skills. User skills override built-ins on a name clash.
@@ -36,6 +36,7 @@ const HELP = `
     $ stackai login <api_key>      Log in directly
     $ stackai whoami               Show current user + usage
     $ stackai skill                List available skills
+    $ stackai bankr set <bk_key>   Save your Bankr API key (for the bankr skill)
     $ stackai logout               Remove your saved API key
     $ stackai --help
     $ stackai --version
@@ -89,6 +90,32 @@ async function main(): Promise<void> {
   if (first === "logout") {
     await clearConfig();
     console.log("✓ Logged out");
+    return;
+  }
+
+  // bankr — manage the Bankr API key used by the bankr skill (BYOK).
+  if (first === "bankr") {
+    const sub = args[1];
+    if (sub === "set") {
+      const key = args[2];
+      if (!key) {
+        console.error("Usage: stackai bankr set <bk_...>");
+        process.exitCode = 1;
+        return;
+      }
+      await setBankrKey(key);
+      console.log("✓ Bankr key saved. The bankr skill can now trade/launch on your behalf.");
+      return;
+    }
+    if (sub === "clear") {
+      await setBankrKey(null);
+      console.log("✓ Bankr key removed.");
+      return;
+    }
+    // status (default)
+    const cfg = await readConfig();
+    const k = cfg?.bankrKey;
+    console.log(k ? `Bankr key: ${k.slice(0, 6)}…${k.slice(-4)} (set)` : "Bankr key: not set. Run: stackai bankr set <bk_...>");
     return;
   }
 
@@ -146,7 +173,11 @@ async function main(): Promise<void> {
     apiKey: config.apiKey,
     baseURL: `${config.apiUrl}/api/v1`,
   });
-  const runner = new AgentRunner({ llm, skills: await loadSkills() });
+  const runner = new AgentRunner({
+    llm,
+    skills: await loadSkills(),
+    env: config.bankrKey ? { BANKR_API_KEY: config.bankrKey } : undefined,
+  });
   const cwd = process.cwd();
 
   if (!first) {
