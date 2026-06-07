@@ -22,11 +22,13 @@ const TOKEN = required("TELEGRAM_BOT_TOKEN");
 const MIMO_API_KEY = required("MIMO_API_KEY");
 const WEB_URL = process.env.WEB_URL ?? "https://usestackai.com";
 
-// Built-in skills ship next to the bundle (dist/skills, copied by tsup).
-const SKILLS_DIR = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "skills",
-);
+// Built-in skills: dist/skills in prod (copied by tsup), or packages/skills in
+// dev (tsx). load() skips dirs that don't exist, so we pass both candidates.
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const SKILL_DIRS = [
+  path.join(HERE, "skills"), // prod: apps/bot/dist/skills
+  path.resolve(HERE, "../../../packages/skills"), // dev: from apps/bot/src
+];
 // Empty working dir for the agent's file tools (skills don't write here).
 const WORK_DIR = path.join(os.tmpdir(), "stackai-bot");
 
@@ -62,21 +64,22 @@ function allow(id: string): boolean {
  * (`node "<path inside SKILLS_DIR>.mjs" …`). Everything else is denied so the
  * model can never run arbitrary shell commands on the server.
  */
-const skillsBase = path.resolve(SKILLS_DIR);
+const skillBases = SKILL_DIRS.map((d) => path.resolve(d));
 function confirm(command: string): boolean {
   const m =
     /^node\s+"([^"]+\.mjs)"/i.exec(command) ??
     /^node\s+(\S+\.mjs)/i.exec(command);
   if (!m?.[1]) return false;
-  return path.resolve(m[1]).startsWith(skillsBase);
+  const script = path.resolve(m[1]);
+  return skillBases.some((base) => script.startsWith(base));
 }
 
 async function main(): Promise<void> {
   await fs.mkdir(WORK_DIR, { recursive: true });
 
   const skills = new SkillRegistry();
-  await skills.load([SKILLS_DIR]);
-  console.log(`[bot] loaded ${skills.size} skill(s) from ${SKILLS_DIR}`);
+  await skills.load(SKILL_DIRS);
+  console.log(`[bot] loaded ${skills.size} skill(s)`);
 
   const llm = new LLMClient({ apiKey: MIMO_API_KEY });
   const runner = new AgentRunner({ llm, skills, maxSteps: 12 });
