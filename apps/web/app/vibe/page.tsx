@@ -29,7 +29,12 @@ interface VibeResponse {
 const KEY_LS = "stackai_vibe_key";
 const SESS_LS = "stackai_vibe_sessions";
 const CUR_LS = "stackai_vibe_current";
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+// Fall back to the Railway API host so a missing/empty NEXT_PUBLIC_API_URL at
+// build time can't silently make calls hit this same Next app (404 → false
+// "Invalid API key"). The env var still wins when set.
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://stackaiapi-production.up.railway.app";
 const THINKING = [
   "Thinking…",
   "Planning the build…",
