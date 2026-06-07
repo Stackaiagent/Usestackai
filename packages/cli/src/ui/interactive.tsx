@@ -5,6 +5,7 @@ import TextInput from "ink-text-input";
 import { AgentSession, type AgentStep } from "@stackai/core";
 import { applyStep, type Entry } from "./format.js";
 import { EntryLines } from "./entry-lines.js";
+import { useCommandConfirm } from "./confirm.js";
 
 interface InteractiveProps {
   session: AgentSession;
@@ -30,6 +31,7 @@ const LOGO = [
  */
 export function Interactive({ session, cwd, version }: InteractiveProps) {
   const { exit } = useApp();
+  const { confirm, element: confirmPrompt } = useCommandConfirm();
   const [history, setHistory] = useState<Block[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -96,7 +98,7 @@ export function Interactive({ session, cwd, version }: InteractiveProps) {
     };
 
     try {
-      await session.send(text, onStep);
+      await session.send(text, onStep, confirm);
     } catch (err) {
       if (mounted.current) setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -155,6 +157,9 @@ export function Interactive({ session, cwd, version }: InteractiveProps) {
           <Text color="red">Error: {error}</Text>
         </Box>
       )}
+
+      {/* Command approval prompt (when the agent wants to run a shell command) */}
+      {confirmPrompt}
 
       {/* Input box */}
       <Box

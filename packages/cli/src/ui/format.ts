@@ -74,6 +74,10 @@ function toolEntries(step: Extract<AgentStep, { type: "tool_call" }>): Entry[] {
       return [
         { kind: "tool", color: ACCENT, label: `Find(${String(args.pattern ?? "")})` },
       ];
+    case "run_command":
+      return [
+        { kind: "tool", color: ACCENT, label: `Run(${clip(String(args.command ?? ""), 60)})` },
+      ];
     default:
       return [{ kind: "tool", color: ACCENT, label: step.name }];
   }
@@ -109,6 +113,24 @@ export function applyStep(entries: Entry[], step: AgentStep): Entry[] {
       const empty = /^\(no /.test(step.detail);
       const n = empty ? 0 : splitLines(step.detail).length;
       return [...entries, { kind: "sub", color: "gray", text: `${n} results` }];
+    }
+    if (step.name === "run_command") {
+      // Drop the leading "$ <command>" echo (already shown in the header);
+      // preview the output and surface the exit code.
+      const lines = splitLines(step.detail);
+      const body = lines[0]?.startsWith("$ ") ? lines.slice(1) : lines;
+      const exitLine = body[body.length - 1] ?? "";
+      const exitOk = /^\[exit 0\]$/.test(exitLine);
+      const out = body.filter((l) => !/^\[exit \d+\]$/.test(l));
+      return [
+        ...entries,
+        ...preview(out, " ", "gray"),
+        {
+          kind: "sub",
+          color: exitOk ? "green" : "red",
+          text: exitOk ? "✓ exit 0" : exitLine || "✗ failed",
+        },
+      ];
     }
   }
   return entries;

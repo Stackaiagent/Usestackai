@@ -4,6 +4,7 @@ import Spinner from "ink-spinner";
 import { AgentRunner, type AgentStep } from "@stackai/core";
 import { applyStep, type Entry } from "./format.js";
 import { EntryLines } from "./entry-lines.js";
+import { useCommandConfirm } from "./confirm.js";
 
 interface RunViewProps {
   runner: AgentRunner;
@@ -14,6 +15,7 @@ interface RunViewProps {
 /** One-shot run: streams a single agent response, then exits. */
 export function RunView({ runner, prompt, cwd }: RunViewProps) {
   const { exit } = useApp();
+  const { confirm, element: confirmPrompt } = useCommandConfirm();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(true);
@@ -44,7 +46,7 @@ export function RunView({ runner, prompt, cwd }: RunViewProps) {
     };
 
     runner
-      .run({ prompt, cwd, onStep })
+      .run({ prompt, cwd, onStep, confirm })
       .catch((err: unknown) => {
         if (!cancelled)
           setError(err instanceof Error ? err.message : String(err));
@@ -61,7 +63,7 @@ export function RunView({ runner, prompt, cwd }: RunViewProps) {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [runner, prompt, cwd, exit]);
+  }, [runner, prompt, cwd, exit, confirm]);
 
   return (
     <Box flexDirection="column" paddingY={1}>
@@ -79,6 +81,8 @@ export function RunView({ runner, prompt, cwd }: RunViewProps) {
       </Box>
 
       <EntryLines entries={entries} />
+
+      {confirmPrompt}
 
       {error && (
         <Box marginTop={1} marginLeft={2}>

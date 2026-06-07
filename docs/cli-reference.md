@@ -29,8 +29,13 @@ Inside a run, the agent has these tools:
 | `list_files` / `create_dir` | Explore and create folders |
 | `search_files` | Regex content search across the project (grep) |
 | `find_files` | Find files by glob pattern (e.g. `src/**/*.ts`) |
+| `run_command` | Run a shell command (tests, build, install, git) — **you approve each one** |
 
-It works **only inside your current directory** and shows each action live (`● Write(file)`, `● Edit(file)`, …) with a diff preview.
+It works **only inside your current directory** and shows each action live (`● Write(file)`, `● Edit(file)`, `● Run(cmd)`, …) with a diff/output preview.
+
+{% hint style="warning" %}
+**Command approval:** when the agent wants to run a shell command, StackAI pauses and asks: **`y`** (run once) · **`a`** (always, for the rest of this session) · **`n`** (skip). Nothing runs without your OK. The agent is told never to run destructive commands unless you explicitly asked.
+{% endhint %}
 
 ## Config
 

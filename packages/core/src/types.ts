@@ -32,3 +32,11 @@ export type AgentStep =
 export type StreamChunk = string;
 export type OnChunk = (chunk: StreamChunk) => void;
 export type OnStep = (step: AgentStep) => void;
+
+/**
+ * Approval gate for shell commands. Called before `run_command` executes; if it
+ * resolves false (or is absent) the command is NOT run. The CLI wires this to an
+ * interactive y/n prompt; server-side callers leave it unset so commands can
+ * never run without an explicit handler.
+ */
+export type ConfirmRun = (command: string) => boolean | Promise<boolean>;

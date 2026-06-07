@@ -6,7 +6,7 @@ import type {
 import { LLMClient } from "./llm-client.js";
 import { FileAgent } from "./file-agent.js";
 import { SYSTEM_PROMPT } from "./system-prompt.js";
-import type { OnStep } from "./types.js";
+import type { OnStep, ConfirmRun } from "./types.js";
 
 /** Max characters of a tool result kept in conversation history. */
 const MAX_TOOL_RESULT_CHARS = 12_000;
@@ -29,6 +29,8 @@ export interface RunOptions {
   prompt: string;
   cwd: string;
   onStep?: OnStep;
+  /** Approval gate for `run_command`. Without it, commands are never run. */
+  confirm?: ConfirmRun;
 }
 
 export interface RunResult {
@@ -134,6 +136,19 @@ const TOOLS: ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "run_command",
+      description:
+        "Run a shell command in the project root (e.g. run tests, install deps, build, git). Returns stdout, stderr, and the exit code. The user must approve each command. Use non-interactive flags; run ONE command at a time.",
+      parameters: {
+        type: "object",
+        properties: { command: { type: "string" } },
+        required: ["command"],
+      },
+    },
+  },
 ];
 
 /**
@@ -150,11 +165,11 @@ export class AgentRunner {
     this.maxSteps = options.maxSteps ?? 50;
   }
 
-  async run({ prompt, cwd, onStep }: RunOptions): Promise<RunResult> {
+  async run({ prompt, cwd, onStep, confirm }: RunOptions): Promise<RunResult> {
     const files = new FileAgent(cwd);
     const messages = await this.systemMessages(files);
     messages.push({ role: "user", content: prompt });
-    return this.runLoop(messages, files, onStep);
+    return this.runLoop(messages, files, onStep, confirm);
   }
 
   /** Start a stateful chat session that retains history across prompts. */
@@ -199,6 +214,7 @@ export class AgentRunner {
     messages: ChatCompletionMessageParam[],
     files: FileAgent,
     onStep?: OnStep,
+    confirm?: ConfirmRun,
   ): Promise<RunResult> {
     for (let step = 1; step <= this.maxSteps; step++) {
       const { content, toolCalls } = await this.llm.streamChat(messages, {
@@ -238,7 +254,7 @@ export class AgentRunner {
             result =
               "Skipped: too many tool calls in one turn. Apply one change at a time.";
           } else {
-            result = await this.execTool(files, call, onStep);
+            result = await this.execTool(files, call, onStep, confirm);
             executed += 1;
           }
           seen.set(sig, result);
@@ -264,6 +280,7 @@ export class AgentRunner {
     files: FileAgent,
     call: ChatCompletionMessageToolCall,
     onStep?: OnStep,
+    confirm?: ConfirmRun,
   ): Promise<string> {
     const name = call.function.name;
     let args: Record<string, unknown>;
@@ -279,7 +296,7 @@ export class AgentRunner {
     onStep?.({ type: "tool_call", name, args });
 
     try {
-      const detail = await this.dispatch(files, name, args);
+      const detail = await this.dispatch(files, name, args, confirm);
       onStep?.({ type: "tool_result", name, ok: true, detail });
       return detail;
     } catch (err) {
@@ -293,6 +310,7 @@ export class AgentRunner {
     files: FileAgent,
     name: string,
     args: Record<string, unknown>,
+    confirm?: ConfirmRun,
   ): Promise<string> {
     switch (name) {
       case "read_file":
@@ -319,6 +337,19 @@ export class AgentRunner {
       case "find_files": {
         const found = await files.glob(str(args.pattern));
         return found.join("\n") || "(no files matched)";
+      }
+      case "run_command": {
+        const command = str(args.command);
+        const approved = confirm ? await confirm(command) : false;
+        if (!approved) {
+          return "Command was not run — the user declined (or no approval handler is available). Do not retry it; continue without running it.";
+        }
+        const { stdout, stderr, exitCode } = await files.runCommand(command);
+        const parts = [`$ ${command}`];
+        if (stdout.trim()) parts.push(stdout.trimEnd());
+        if (stderr.trim()) parts.push(stderr.trimEnd());
+        parts.push(`[exit ${exitCode}]`);
+        return parts.join("\n");
       }
       default:
         return `Error: unknown tool ${name}`;
@@ -351,13 +382,17 @@ export class AgentSession {
   }
 
   /** Send a user message; the agent acts with full prior context. */
-  async send(prompt: string, onStep?: OnStep): Promise<RunResult> {
+  async send(
+    prompt: string,
+    onStep?: OnStep,
+    confirm?: ConfirmRun,
+  ): Promise<RunResult> {
     if (!this.initialized) {
       // Seed the system prompt + project context (STACKAI.md) once.
       this.messages = await this.runner.systemMessages(this.files);
       this.initialized = true;
     }
     this.messages.push({ role: "user", content: prompt });
-    return this.runner.runLoop(this.messages, this.files, onStep);
+    return this.runner.runLoop(this.messages, this.files, onStep, confirm);
   }
 }

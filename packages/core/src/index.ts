@@ -1,6 +1,7 @@
 export { LLMClient } from "./llm-client.js";
 export type { LLMClientOptions, ChatOptions } from "./llm-client.js";
 export { FileAgent } from "./file-agent.js";
+export type { CommandResult } from "./file-agent.js";
 export { AgentRunner, AgentSession } from "./agent-runner.js";
 export type {
   AgentRunnerOptions,
@@ -24,4 +25,5 @@ export type {
   StreamChunk,
   OnChunk,
   OnStep,
+  ConfirmRun,
 } from "./types.js";

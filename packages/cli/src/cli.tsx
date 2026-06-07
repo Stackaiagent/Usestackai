@@ -7,7 +7,7 @@ import { RunView } from "./ui/run-view.js";
 import { Interactive } from "./ui/interactive.js";
 import { LoginView } from "./ui/login-view.js";
 
-const VERSION = "0.1.7";
+const VERSION = "0.1.8";
 
 const HELP = `
   StackAI — AI coding agent in your terminal
