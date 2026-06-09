@@ -45,7 +45,7 @@ import { RunView } from "./ui/run-view.js";
 import { Interactive } from "./ui/interactive.js";
 import { LoginView } from "./ui/login-view.js";
 
-const VERSION = "0.1.15";
+const VERSION = "0.1.16";
 
 // Skills ship bundled next to the CLI (dist/skills) and users can install more
 // into ~/.stackai/skills. User skills override built-ins on a name clash.

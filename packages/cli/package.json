@@ -1,6 +1,6 @@
 {
   "name": "stackai",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "StackAI — AI coding agent in your terminal. Read, write, and edit code with AI.",
   "type": "module",
   "bin": {
