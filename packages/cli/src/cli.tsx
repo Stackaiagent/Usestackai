@@ -15,6 +15,7 @@ import {
   type CliConfig,
 } from "./config.js";
 import { ApiClient } from "./api.js";
+import { installSkill, removeSkill } from "./skill-install.js";
 
 const VENICE_BASE_URL = "https://api.venice.ai/api/v1";
 
@@ -44,7 +45,7 @@ import { RunView } from "./ui/run-view.js";
 import { Interactive } from "./ui/interactive.js";
 import { LoginView } from "./ui/login-view.js";
 
-const VERSION = "0.1.12";
+const VERSION = "0.1.13";
 
 // Skills ship bundled next to the CLI (dist/skills) and users can install more
 // into ~/.stackai/skills. User skills override built-ins on a name clash.
@@ -70,6 +71,8 @@ const HELP = `
     $ stackai login <api_key>      Log in directly
     $ stackai whoami               Show current user + usage
     $ stackai skill                List available skills
+    $ stackai skill add <repo> [p] Install a skill from a GitHub repo
+    $ stackai skill remove <name>  Remove an installed skill
     $ stackai bankr set <bk_key>   Save your Bankr API key (for the bankr skill)
     $ stackai venice set <key>     Save a Venice API key (for Venice models)
     $ stackai venice models        List available Venice text models
@@ -223,8 +226,40 @@ async function main(): Promise<void> {
     return;
   }
 
-  // skill — list available skills (built-in + ~/.stackai/skills). No auth needed.
+  // skill — list / install / remove skills (built-in + ~/.stackai/skills).
   if (first === "skill") {
+    const sub = args[1];
+    if (sub === "add") {
+      const repo = args[2];
+      const subpath = args[3];
+      if (!repo) {
+        console.error("Usage: stackai skill add <owner/repo> [path]");
+        process.exitCode = 1;
+        return;
+      }
+      try {
+        console.log(`Installing from ${repo}${subpath ? "/" + subpath : ""}…`);
+        const s = await installSkill(repo, subpath);
+        console.log(`✓ Installed "${s.name}" (${s.files} files).`);
+        console.log("⚠ Installed skills can run commands (with your approval). Only add skills you trust.");
+      } catch (err) {
+        console.error(`✗ ${err instanceof Error ? err.message : String(err)}`);
+        process.exitCode = 1;
+      }
+      return;
+    }
+    if (sub === "remove") {
+      const name = args[2];
+      if (!name) {
+        console.error("Usage: stackai skill remove <name>");
+        process.exitCode = 1;
+        return;
+      }
+      const ok = await removeSkill(name);
+      console.log(ok ? `✓ Removed "${name}".` : `Skill "${name}" not found (built-ins can't be removed).`);
+      return;
+    }
+    // list (default)
     const skills = await loadSkills();
     const items = skills.list();
     if (!items.length) {
