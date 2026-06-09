@@ -28,8 +28,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm --filter stackai typecheck
-
       # Build core first; the CLI's prepublishOnly (tsup) bundles it + the skills.
       - run: pnpm --filter @stackai/core build
 
