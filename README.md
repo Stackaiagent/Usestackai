@@ -2,15 +2,16 @@
 
 # StackAI
 
-**An AI coding agent that lives in your terminal.**
+**An AI agent for your terminal, editor, and Telegram — that does real work through skills.**
 
-Describe what you want — it reads, writes, and edits your code. Plus a web "Vibe" mode to build whole projects by chatting.
+Describe what you want. It reads and edits your code, runs commands you approve, pulls live on-chain data, and remembers your preferences across sessions.
 
 [![npm](https://img.shields.io/npm/v/stackai?color=e8ff47)](https://www.npmjs.com/package/stackai)
+[![downloads](https://img.shields.io/npm/dt/stackai?color=e8ff47)](https://www.npmjs.com/package/stackai)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](#)
 
-[Website](https://usestackai.com) · [Docs](https://usestackai.com) · [X / @askstackai](https://x.com/askstackai)
+[Website](https://usestackai.com) · [Docs](https://docs.usestackai.com) · [Telegram](https://t.me/StackAIagent_bot) · [X / @askstackai](https://x.com/askstackai)
 
 </div>
 
@@ -24,43 +25,44 @@ stackai login              # paste your API key (get one at usestackai.com)
 stackai                    # start an interactive session
 ```
 
-Or run a single task and exit:
-
 ```bash
-stackai "add input validation to all the API routes"
+stackai "add input validation to all the API routes"   # one-shot
 ```
 
 > Get a free API key by signing in with X at **[usestackai.com](https://usestackai.com)** (50 requests/day on the free tier).
 
 ## What it does
 
-- 🖥️ **Terminal agent** — reads, writes, and edits files in your project. Multi-file changes, all local.
-- 💬 **Interactive mode** — `stackai` opens a chat session that keeps full context across messages.
-- 🔎 **Codebase-aware** — built-in `grep` + `glob` so it navigates large projects efficiently.
-- 📄 **Project context** — drop a `STACKAI.md` (or `AGENTS.md`) in your repo and the agent follows it.
-- 🎨 **Vibe (web)** — chat to generate a project, see a **live preview**, iterate, and download a `.zip`.
-- 🔐 **Sign in with X**, manage API keys + usage from the dashboard.
+- 🖥️ **Terminal agent** — reads, writes, edits files and runs commands (with your approval). Multi-file, all local.
+- 🧩 **Skills** — load a [skill](https://docs.usestackai.com/skills) for a task. 10 built in (token reports, rug checks, market data, DeFi TVL, Bankr…), and `stackai skill add <repo>` installs more from any GitHub repo.
+- 🧠 **Memory** — remembers your preferences and project facts across sessions (`remember` / `forget`, local only).
+- 🔀 **Multi-model** — runs on Xiaomi MiMo by default; `/model` switches to Venice (bring your own key).
+- 🏦 **Bankr** — trade, transfer, or launch a token through your own Bankr wallet (your key stays on your machine).
+- 💬 **Telegram** — read-only crypto skills on the go via [@StackAIagent_bot](https://t.me/StackAIagent_bot).
+- 🎨 **Vibe (web)** — chat to generate a project, see a live preview, download a `.zip`.
 
 ## How it works
 
-The agent loop runs **locally** in the CLI (using your files), while model calls are routed through StackAI's API so rate limiting and the model key stay server-side.
+The agent loop runs **locally** in the CLI; model calls route through StackAI's API so rate limiting and the model key stay server-side. The same engine runs server-side for the Telegram bot.
 
 ```
-CLI (local agent loop: read/write/edit/grep/glob)
-        │  Authorization: Bearer <api_key>
-        ▼
-StackAI API  ──►  proxy /api/v1/chat/completions  ──►  Xiaomi MiMo
+CLI (local agent loop) ──► StackAI API proxy ──► Xiaomi MiMo
+   tools: read/write/edit · grep/glob · run_command · load_skill · remember/forget
 ```
+
+Full concepts: **[docs.usestackai.com](https://docs.usestackai.com)**.
 
 ## Monorepo
 
 ```
 apps/
-  web/        Next.js — landing, login, dashboard, Vibe (deployed on Vercel)
-  api/        Hono server — auth, rate limit, MiMo proxy (deployed on Railway)
+  web/        Next.js — landing, login, dashboard, Vibe (Vercel)
+  api/        Hono server — auth, rate limit, MiMo proxy (Railway)
+  bot/        Telegram bot — runs skills server-side (Railway)
 packages/
-  core/       Shared agent logic — LLMClient, FileAgent, AgentRunner
+  core/       Shared agent logic — LLMClient, FileAgent, AgentRunner, SkillRegistry, MemoryStore
   cli/        `stackai` — the CLI (published to npm)
+  skills/     Built-in skills (SKILL.md runbooks)
   vscode/     VS Code extension
 infra/
   supabase/   SQL migrations + RLS
@@ -72,26 +74,19 @@ Package manager **pnpm** · build **Turborepo** · **TypeScript** strict everywh
 
 ```bash
 pnpm install
-
-# 1. Configure env (see SETUP.md): apps/api/.env and apps/web/.env.local
-# 2. Apply the DB schema: run infra/supabase/migrations/*.sql in Supabase
+# Configure env (see SETUP.md): apps/api/.env, apps/web/.env.local
+# Apply DB schema: run infra/supabase/migrations/*.sql in Supabase
 
 pnpm --filter @stackai/api dev    # API on :8787
 pnpm --filter @stackai/web dev    # Web on :3000
 pnpm --filter @stackai/core build && pnpm --filter stackai build   # build the CLI
 ```
 
-Point the CLI at your local API:
-
-```bash
-node packages/cli/dist/cli.js auth <key> http://localhost:8787
-```
-
 Full setup + deployment guide: **[SETUP.md](./SETUP.md)**.
 
 ## Tech
 
-Next.js · Hono · Supabase (Postgres) · Upstash Redis · Xiaomi MiMo (`mimo-v2.5-pro`) · ink · tsup.
+Next.js · Hono · grammY · Supabase (Postgres) · Upstash Redis · Xiaomi MiMo · Venice · Bankr · ink · tsup.
 
 ## License
 
