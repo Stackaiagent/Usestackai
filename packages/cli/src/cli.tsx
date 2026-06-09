@@ -9,7 +9,7 @@ import {
   writeConfig,
   clearConfig,
   setBankrKey,
-  setVeniceKey,
+  setKey,
   setModel,
   DEFAULT_API_URL,
   type CliConfig,
@@ -17,35 +17,64 @@ import {
 import { ApiClient } from "./api.js";
 import { installSkill, removeSkill } from "./skill-install.js";
 
-const VENICE_BASE_URL = "https://api.venice.ai/api/v1";
+// OpenAI-compatible model providers. MiMo is the default (via the StackAI proxy,
+// free tier); the rest are bring-your-own-key, called directly.
+const PROVIDERS: Record<string, { baseURL: string; label: string }> = {
+  openrouter: { baseURL: "https://openrouter.ai/api/v1", label: "OpenRouter" },
+  venice: { baseURL: "https://api.venice.ai/api/v1", label: "Venice" },
+  openai: { baseURL: "https://api.openai.com/v1", label: "OpenAI" },
+  xai: { baseURL: "https://api.x.ai/v1", label: "xAI" },
+  google: {
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+    label: "Google Gemini",
+  },
+};
+
+// Friendly aliases → a current OpenRouter model id (one OpenRouter key unlocks
+// all). Exact/newer ids are always available via `stackai models openrouter`.
+const ALIASES: Record<string, string> = {
+  claude: "openrouter:anthropic/claude-opus-4.8",
+  gpt: "openrouter:openai/gpt-5.5",
+  gemini: "openrouter:google/gemini-3.5-flash",
+  grok: "openrouter:x-ai/grok-4.3",
+  deepseek: "openrouter:deepseek/deepseek-v3.2",
+};
 
 /**
- * Build the LLM for the chosen model. MiMo (default) goes through the StackAI
- * Railway proxy (free tier, rate-limited server-side). Any other id is a Venice
- * model called directly with the user's own Venice key (BYOK).
+ * Build the LLM for a model id. "mimo" (default) goes through the StackAI proxy
+ * (free tier). Otherwise the id is "<provider>:<model>" (or a friendly alias, or
+ * a bare id which means Venice, for back-compat) — called directly with the
+ * user's own key for that provider.
  */
 function resolveLLM(config: CliConfig, modelId?: string): LLMClient {
-  const id = modelId ?? config.model ?? "mimo";
+  let id = modelId ?? config.model ?? "mimo";
   if (id === "mimo" || id === "mimo-v2.5-pro") {
     return new LLMClient({
       apiKey: config.apiKey,
       baseURL: `${config.apiUrl}/api/v1`,
     });
   }
-  if (!config.veniceKey) {
-    throw new Error("No Venice key set. Run: stackai venice set <key>");
+  id = ALIASES[id] ?? id;
+  const sep = id.indexOf(":");
+  const provider = sep === -1 ? "venice" : id.slice(0, sep);
+  const model = sep === -1 ? id : id.slice(sep + 1);
+  const p = PROVIDERS[provider];
+  if (!p) {
+    throw new Error(
+      `Unknown provider "${provider}". Use one of: ${Object.keys(PROVIDERS).join(", ")} (e.g. openrouter:anthropic/claude-3.7-sonnet, or just /model claude).`,
+    );
   }
-  return new LLMClient({
-    apiKey: config.veniceKey,
-    baseURL: VENICE_BASE_URL,
-    model: id,
-  });
+  const key = config.keys?.[provider];
+  if (!key) {
+    throw new Error(`No ${p.label} key set. Run: stackai key set ${provider} <key>`);
+  }
+  return new LLMClient({ apiKey: key, baseURL: p.baseURL, model });
 }
 import { RunView } from "./ui/run-view.js";
 import { Interactive } from "./ui/interactive.js";
 import { LoginView } from "./ui/login-view.js";
 
-const VERSION = "0.1.17";
+const VERSION = "0.1.18";
 
 // Skills ship bundled next to the CLI (dist/skills) and users can install more
 // into ~/.stackai/skills. User skills override built-ins on a name clash.
@@ -81,9 +110,9 @@ const HELP = `
     $ stackai skill add <repo> [p] Install a skill from a GitHub repo
     $ stackai skill remove <name>  Remove an installed skill
     $ stackai bankr set <bk_key>   Save your Bankr API key (for the bankr skill)
-    $ stackai venice set <key>     Save a Venice API key (for Venice models)
-    $ stackai venice models        List available Venice text models
-    $ stackai model [id]           Show or set the default model (mimo or a Venice id)
+    $ stackai model [id]           Show/set model (mimo · claude · gpt · gemini · grok · provider:model)
+    $ stackai key set <prov> <key> BYOK for a provider (openrouter, openai, venice, xai, google)
+    $ stackai models [provider]    List a provider's models (default: openrouter)
     $ stackai logout               Remove your saved API key
     $ stackai --help
     $ stackai --version
@@ -166,48 +195,76 @@ async function main(): Promise<void> {
     return;
   }
 
-  // venice — manage the Venice API key + list Venice models (BYOK multi-model).
-  if (first === "venice") {
+  // key — manage BYOK keys per model provider (openrouter, venice, openai, …).
+  if (first === "key") {
     const sub = args[1];
     if (sub === "set") {
-      const key = args[2];
-      if (!key) {
-        console.error("Usage: stackai venice set <key>");
+      const provider = args[2];
+      const key = args[3];
+      if (!provider || !key || !PROVIDERS[provider]) {
+        console.error(`Usage: stackai key set <provider> <key>   (providers: ${Object.keys(PROVIDERS).join(", ")})`);
         process.exitCode = 1;
         return;
       }
-      await setVeniceKey(key);
-      console.log("✓ Venice key saved. Switch with `stackai model <venice-id>` or /model in a session.");
+      await setKey(provider, key);
+      console.log(`✓ ${PROVIDERS[provider].label} key saved. Use it: stackai model ${provider}:<id>  (or an alias like /model claude).`);
       return;
     }
     if (sub === "clear") {
-      await setVeniceKey(null);
-      console.log("✓ Venice key removed.");
-      return;
-    }
-    if (sub === "models") {
-      const cfg = await readConfig();
-      const key = cfg?.veniceKey;
-      if (!key) {
-        console.error("No Venice key. Run: stackai venice set <key>");
+      const provider = args[2];
+      if (!provider) {
+        console.error("Usage: stackai key clear <provider>");
         process.exitCode = 1;
         return;
       }
-      try {
-        const res = await fetch(`${VENICE_BASE_URL}/models?type=text`, {
-          headers: { Authorization: `Bearer ${key}` },
-        });
-        const json = (await res.json()) as { data?: { id: string }[] };
-        const ids = (json.data ?? []).map((m) => m.id);
-        console.log(ids.length ? ids.map((i) => `  ${i}`).join("\n") : "(no models returned)");
-      } catch (err) {
-        console.error(err instanceof Error ? err.message : String(err));
-        process.exitCode = 1;
-      }
+      await setKey(provider, null);
+      console.log(`✓ ${provider} key removed.`);
       return;
     }
-    console.error("Usage: stackai venice <set <key> | models | clear>");
-    process.exitCode = 1;
+    const cfg = await readConfig();
+    const set = new Set(Object.keys(cfg?.keys ?? {}));
+    console.log("Provider keys: " + Object.keys(PROVIDERS).map((p) => (set.has(p) ? `${p} ✓` : p)).join(" · "));
+    console.log("Set one: stackai key set <provider> <key>   (e.g. openrouter for Claude/GPT/Gemini/Grok)");
+    return;
+  }
+
+  // venice — back-compat shim for the generic key/models commands.
+  if (first === "venice") {
+    if (args[1] === "set" && args[2]) { await setKey("venice", args[2]); console.log("✓ Venice key saved."); return; }
+    if (args[1] === "clear") { await setKey("venice", null); console.log("✓ Venice key removed."); return; }
+    console.log("Use the generic commands now: `stackai key set venice <key>` · `stackai models venice`.");
+    return;
+  }
+
+  // models — list a provider's models (default: openrouter). No auth needed.
+  if (first === "models") {
+    const provider = args[1] ?? "openrouter";
+    const p = PROVIDERS[provider];
+    if (!p) {
+      console.error(`Unknown provider "${provider}". Try: ${Object.keys(PROVIDERS).join(", ")}`);
+      process.exitCode = 1;
+      return;
+    }
+    const cfg = await readConfig();
+    const key = cfg?.keys?.[provider];
+    try {
+      const url = `${p.baseURL}/models${provider === "venice" ? "?type=text" : ""}`;
+      const res = await fetch(url, key ? { headers: { Authorization: `Bearer ${key}` } } : {});
+      const json = (await res.json()) as { data?: { id: string }[] };
+      const ids = (json.data ?? []).map((m) => m.id);
+      if (!ids.length) {
+        console.log("(no models returned — a key may be required for this provider)");
+        return;
+      }
+      const shown = ids.slice(0, 60);
+      console.log(`${p.label} models (${ids.length}):`);
+      for (const i of shown) console.log(`  ${i}`);
+      if (ids.length > shown.length) console.log(`  … +${ids.length - shown.length} more`);
+      console.log(`Use: stackai model ${provider}:<id>   (or /model in a session)`);
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exitCode = 1;
+    }
     return;
   }
 
@@ -217,15 +274,20 @@ async function main(): Promise<void> {
     if (!id) {
       const cfg = await readConfig();
       console.log(`Default model: ${cfg?.model ?? "mimo"}`);
-      console.log("Set with: stackai model <id>   (e.g. mimo, or a Venice model id)");
+      console.log("Set: stackai model <id>   (mimo · claude · gpt · gemini · grok · deepseek · or provider:model)");
+      console.log("Add a key first: stackai key set <provider> <key>   ·   list models: stackai models <provider>");
       return;
     }
     if (id !== "mimo") {
       const cfg = await readConfig();
-      if (!cfg?.veniceKey) {
-        console.error("That looks like a Venice model but no Venice key is set. Run: stackai venice set <key>");
-        process.exitCode = 1;
-        return;
+      if (cfg) {
+        try {
+          resolveLLM(cfg, id);
+        } catch (err) {
+          console.error(err instanceof Error ? err.message : String(err));
+          process.exitCode = 1;
+          return;
+        }
       }
     }
     await setModel(id === "mimo" ? null : id);

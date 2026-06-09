@@ -67,7 +67,7 @@ export function Interactive({
       const arg = text.slice(6).trim();
       let msg: string;
       if (!arg) {
-        msg = `Current model: ${model}. Switch with /model <id> (e.g. /model mimo, or a Venice model id). Need a Venice key first: stackai venice set <key>`;
+        msg = `Current model: ${model}. Switch with /model <id> — mimo · claude · gpt · gemini · grok · or provider:model. Add a key first: stackai key set <provider> <key> (e.g. openrouter).`;
       } else {
         msg = await switchModel(arg);
         if (msg.startsWith("Switched")) setModel(arg);

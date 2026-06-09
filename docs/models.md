@@ -1,50 +1,72 @@
 ---
 icon: microchip
-description: Run StackAI on MiMo by default, or bring your own key to use Venice models.
+description: Run StackAI on MiMo by default, or bring your own key to use Claude, GPT, Gemini, Grok, and more.
 ---
 
 # Models
 
-StackAI runs on **Xiaomi MiMo v2.5 Pro** by default — routed through StackAI's hosted proxy, so it's part of the free tier and rate-limited server-side. You can switch to other models.
+StackAI runs on **Xiaomi MiMo v2.5 Pro** by default — routed through StackAI's hosted proxy, so it's part of the free tier. You can switch to almost any other model by bringing your own key.
 
 ## Switch models
 
 In an interactive session:
 
 ```
-/model                       # show the current model
-/model venice-uncensored     # switch to a Venice model
-/model mimo                  # switch back to MiMo
+/model                 # show the current model
+/model claude          # switch (alias)
+/model mimo            # back to the free default
 ```
 
-The active model is shown in the session banner. To set a default for new sessions:
+Set a default for new sessions:
 
 ```bash
-stackai model <id>           # e.g. stackai model llama-3.3-70b
-stackai model mimo           # back to default
+stackai model <id>     # e.g. stackai model claude
+stackai model mimo
 ```
 
-## Venice (bring your own key)
+## Bring your own key
 
-[Venice](https://venice.ai) is a privacy-first, OpenAI-compatible provider with open and uncensored models. StackAI calls Venice **directly with your own key** — it never goes through StackAI's servers.
+The easiest way to unlock many models is **OpenRouter** — one key gives you Claude, GPT, Gemini, Grok, DeepSeek, and 300+ more.
 
 ```bash
-stackai venice set <key>     # get one at venice.ai/settings/api
-stackai venice models        # list available Venice text models
-stackai venice clear         # remove the key
+stackai key set openrouter <key>     # get one at openrouter.ai/keys
+stackai models openrouter            # list available models
 ```
 
-Your Venice key is stored locally in `~/.stackai/config.json` (or pass it via the `VENICE_API_KEY` environment variable). Once set, switch to any Venice model id with `/model <id>`.
+Then pick a model by alias or full id:
+
+| Alias | Goes to |
+|---|---|
+| `/model claude` | `anthropic/claude-opus-4.8` |
+| `/model gpt` | `openai/gpt-5.5` |
+| `/model gemini` | `google/gemini-3.5-flash` |
+| `/model grok` | `x-ai/grok-4.3` |
+| `/model deepseek` | `deepseek/deepseek-v3.2` |
+
+Or any exact id: `/model openrouter:anthropic/claude-sonnet-latest`.
+
+## Providers
+
+Each provider is OpenAI-compatible and called directly with your own key (never through StackAI's servers).
+
+| Provider | `key set` name | Notes |
+|---|---|---|
+| **MiMo** | — (default) | Free tier, via the StackAI proxy |
+| **OpenRouter** | `openrouter` | One key → Claude, GPT, Gemini, Grok, and more |
+| **Venice** | `venice` | Privacy-first, uncensored open models |
+| **OpenAI** | `openai` | GPT directly |
+| **xAI** | `xai` | Grok directly |
+| **Google** | `google` | Gemini directly |
+
+```bash
+stackai key                          # show which provider keys are set
+stackai key set <provider> <key>
+stackai key clear <provider>
+stackai models <provider>            # list a provider's models
+```
+
+Keys are stored locally in `~/.stackai/config.json` (or via env vars like `OPENROUTER_API_KEY`).
 
 {% hint style="warning" %}
-**Tool calling.** The agent needs function/tool calling for skills and file editing. Not every Venice model supports it — pick a tool-capable model (e.g. a Llama or Qwen) for full agent use. Any model works for plain chat.
+**Tool calling.** The agent needs function/tool calling for skills and file editing. Most frontier models (Claude, GPT, Gemini, Grok, DeepSeek) support it; some smaller/open models don't — pick a tool-capable model for full agent use. Any model works for plain chat.
 {% endhint %}
-
-## How routing works
-
-| Model | Where it runs | Key |
-|---|---|---|
-| `mimo` (default) | StackAI proxy (Railway) — free tier, rate-limited | Your StackAI key |
-| Venice model id | Venice API, called directly | Your own Venice key |
-
-More providers are coming. The same pattern applies: MiMo stays the free default, and other providers are bring-your-own-key.
