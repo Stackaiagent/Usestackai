@@ -179,7 +179,7 @@ const LOAD_SKILL_TOOL: ChatCompletionTool = {
  * tools (finish_reason: "stop") or maxSteps is hit.
  */
 export class AgentRunner {
-  private readonly llm: LLMClient;
+  private llm: LLMClient;
   private readonly maxSteps: number;
   private readonly skills?: SkillRegistry;
   private readonly systemExtra?: string;
@@ -198,6 +198,16 @@ export class AgentRunner {
     const messages = await this.systemMessages(files);
     messages.push({ role: "user", content: prompt });
     return this.runLoop(messages, files, onStep, confirm);
+  }
+
+  /** Swap the underlying LLM (e.g. switching models mid-session via /model). */
+  setLLM(llm: LLMClient): void {
+    this.llm = llm;
+  }
+
+  /** The model id currently in use. */
+  get model(): string {
+    return this.llm.model;
   }
 
   /** Start a stateful chat session that retains history across prompts. */

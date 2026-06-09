@@ -7,6 +7,10 @@ export interface CliConfig {
   apiUrl: string;
   /** Optional user-supplied Bankr API key (bk_…) for the bankr skill. */
   bankrKey?: string;
+  /** Optional Venice API key (BYOK) for Venice models. */
+  veniceKey?: string;
+  /** Selected model id (e.g. "mimo" or a Venice model id). Default: mimo. */
+  model?: string;
 }
 
 // The API runs on a persistent backend (Railway). Override per-machine with
@@ -24,16 +28,18 @@ export async function readConfig(): Promise<CliConfig | null> {
       apiKey: parsed.apiKey,
       // STACKAI_API_URL env always wins — handy for pointing at a local API.
       apiUrl: process.env.STACKAI_API_URL ?? parsed.apiUrl ?? DEFAULT_API_URL,
-      // BANKR_API_KEY env overrides the stored key.
+      // Env vars override stored keys.
       bankrKey: process.env.BANKR_API_KEY ?? parsed.bankrKey,
+      veniceKey: process.env.VENICE_API_KEY ?? parsed.veniceKey,
+      model: parsed.model,
     };
   } catch {
     return null;
   }
 }
 
-/** Save (or clear, with null) the Bankr API key in the config file. */
-export async function setBankrKey(key: string | null): Promise<void> {
+/** Merge a patch into the config file (a null value deletes that field). */
+async function mergeConfig(patch: Record<string, unknown>): Promise<void> {
   let raw: Record<string, unknown> = {};
   try {
     raw = JSON.parse(await fs.readFile(CONFIG_PATH, "utf8")) as Record<
@@ -43,11 +49,17 @@ export async function setBankrKey(key: string | null): Promise<void> {
   } catch {
     // no config yet — start fresh
   }
-  if (key) raw.bankrKey = key;
-  else delete raw.bankrKey;
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === null) delete raw[k];
+    else raw[k] = v;
+  }
   await fs.mkdir(CONFIG_DIR, { recursive: true });
   await fs.writeFile(CONFIG_PATH, JSON.stringify(raw, null, 2), "utf8");
 }
+
+export const setBankrKey = (key: string | null) => mergeConfig({ bankrKey: key });
+export const setVeniceKey = (key: string | null) => mergeConfig({ veniceKey: key });
+export const setModel = (model: string | null) => mergeConfig({ model });
 
 export async function writeConfig(config: CliConfig): Promise<void> {
   await fs.mkdir(CONFIG_DIR, { recursive: true });

@@ -11,6 +11,8 @@ interface InteractiveProps {
   session: AgentSession;
   cwd: string;
   version: string;
+  model: string;
+  switchModel: (id: string) => Promise<string>;
 }
 
 type Block =
@@ -29,13 +31,20 @@ const LOGO = [
  * Interactive REPL — like `claude`. Shows a welcome banner, keeps full
  * conversation context across prompts, and uses a bordered input box.
  */
-export function Interactive({ session, cwd, version }: InteractiveProps) {
+export function Interactive({
+  session,
+  cwd,
+  version,
+  model: initialModel,
+  switchModel,
+}: InteractiveProps) {
   const { exit } = useApp();
   const { confirm, element: confirmPrompt } = useCommandConfirm();
   const [history, setHistory] = useState<Block[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [model, setModel] = useState(initialModel);
   // Guards setState/throttle callbacks once the component unmounts (Ctrl+C /exit).
   const mounted = useRef(true);
   useEffect(
@@ -50,6 +59,24 @@ export function Interactive({ session, cwd, version }: InteractiveProps) {
     if (!text) return;
     if (text === "/exit" || text === "/quit") {
       exit();
+      return;
+    }
+    if (text === "/model" || text.startsWith("/model ")) {
+      setInput("");
+      if (busy) return; // don't swap models mid-run
+      const arg = text.slice(6).trim();
+      let msg: string;
+      if (!arg) {
+        msg = `Current model: ${model}. Switch with /model <id> (e.g. /model mimo, or a Venice model id). Need a Venice key first: stackai venice set <key>`;
+      } else {
+        msg = await switchModel(arg);
+        if (msg.startsWith("Switched")) setModel(arg);
+      }
+      setHistory((prev) => [
+        ...prev,
+        { kind: "user", text },
+        { kind: "agent", entries: [{ kind: "text", text: msg }] },
+      ]);
       return;
     }
     if (busy) return;
@@ -125,7 +152,8 @@ export function Interactive({ session, cwd, version }: InteractiveProps) {
         ))}
         <Box marginTop={1}>
           <Text color="gray">
-            v{version} · MiMo v2.5 Pro · 1M context
+            v{version} · {model === "mimo" ? "MiMo v2.5 Pro" : model} ·{" "}
+            <Text color={ACCENT}>/model</Text> to switch
           </Text>
         </Box>
         <Text color="gray">{cwd}</Text>

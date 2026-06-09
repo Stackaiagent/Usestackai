@@ -4,13 +4,47 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { render } from "ink";
 import { LLMClient, AgentRunner, SkillRegistry } from "@stackai/core";
-import { readConfig, writeConfig, clearConfig, setBankrKey, DEFAULT_API_URL } from "./config.js";
+import {
+  readConfig,
+  writeConfig,
+  clearConfig,
+  setBankrKey,
+  setVeniceKey,
+  setModel,
+  DEFAULT_API_URL,
+  type CliConfig,
+} from "./config.js";
 import { ApiClient } from "./api.js";
+
+const VENICE_BASE_URL = "https://api.venice.ai/api/v1";
+
+/**
+ * Build the LLM for the chosen model. MiMo (default) goes through the StackAI
+ * Railway proxy (free tier, rate-limited server-side). Any other id is a Venice
+ * model called directly with the user's own Venice key (BYOK).
+ */
+function resolveLLM(config: CliConfig, modelId?: string): LLMClient {
+  const id = modelId ?? config.model ?? "mimo";
+  if (id === "mimo" || id === "mimo-v2.5-pro") {
+    return new LLMClient({
+      apiKey: config.apiKey,
+      baseURL: `${config.apiUrl}/api/v1`,
+    });
+  }
+  if (!config.veniceKey) {
+    throw new Error("No Venice key set. Run: stackai venice set <key>");
+  }
+  return new LLMClient({
+    apiKey: config.veniceKey,
+    baseURL: VENICE_BASE_URL,
+    model: id,
+  });
+}
 import { RunView } from "./ui/run-view.js";
 import { Interactive } from "./ui/interactive.js";
 import { LoginView } from "./ui/login-view.js";
 
-const VERSION = "0.1.11";
+const VERSION = "0.1.12";
 
 // Skills ship bundled next to the CLI (dist/skills) and users can install more
 // into ~/.stackai/skills. User skills override built-ins on a name clash.
@@ -37,6 +71,9 @@ const HELP = `
     $ stackai whoami               Show current user + usage
     $ stackai skill                List available skills
     $ stackai bankr set <bk_key>   Save your Bankr API key (for the bankr skill)
+    $ stackai venice set <key>     Save a Venice API key (for Venice models)
+    $ stackai venice models        List available Venice text models
+    $ stackai model [id]           Show or set the default model (mimo or a Venice id)
     $ stackai logout               Remove your saved API key
     $ stackai --help
     $ stackai --version
@@ -119,6 +156,73 @@ async function main(): Promise<void> {
     return;
   }
 
+  // venice — manage the Venice API key + list Venice models (BYOK multi-model).
+  if (first === "venice") {
+    const sub = args[1];
+    if (sub === "set") {
+      const key = args[2];
+      if (!key) {
+        console.error("Usage: stackai venice set <key>");
+        process.exitCode = 1;
+        return;
+      }
+      await setVeniceKey(key);
+      console.log("✓ Venice key saved. Switch with `stackai model <venice-id>` or /model in a session.");
+      return;
+    }
+    if (sub === "clear") {
+      await setVeniceKey(null);
+      console.log("✓ Venice key removed.");
+      return;
+    }
+    if (sub === "models") {
+      const cfg = await readConfig();
+      const key = cfg?.veniceKey;
+      if (!key) {
+        console.error("No Venice key. Run: stackai venice set <key>");
+        process.exitCode = 1;
+        return;
+      }
+      try {
+        const res = await fetch(`${VENICE_BASE_URL}/models?type=text`, {
+          headers: { Authorization: `Bearer ${key}` },
+        });
+        const json = (await res.json()) as { data?: { id: string }[] };
+        const ids = (json.data ?? []).map((m) => m.id);
+        console.log(ids.length ? ids.map((i) => `  ${i}`).join("\n") : "(no models returned)");
+      } catch (err) {
+        console.error(err instanceof Error ? err.message : String(err));
+        process.exitCode = 1;
+      }
+      return;
+    }
+    console.error("Usage: stackai venice <set <key> | models | clear>");
+    process.exitCode = 1;
+    return;
+  }
+
+  // model — show or set the default model (persists for new sessions).
+  if (first === "model") {
+    const id = args[1];
+    if (!id) {
+      const cfg = await readConfig();
+      console.log(`Default model: ${cfg?.model ?? "mimo"}`);
+      console.log("Set with: stackai model <id>   (e.g. mimo, or a Venice model id)");
+      return;
+    }
+    if (id !== "mimo") {
+      const cfg = await readConfig();
+      if (!cfg?.veniceKey) {
+        console.error("That looks like a Venice model but no Venice key is set. Run: stackai venice set <key>");
+        process.exitCode = 1;
+        return;
+      }
+    }
+    await setModel(id === "mimo" ? null : id);
+    console.log(`✓ Default model set to ${id}.`);
+    return;
+  }
+
   // skill — list available skills (built-in + ~/.stackai/skills). No auth needed.
   if (first === "skill") {
     const skills = await loadSkills();
@@ -169,15 +273,29 @@ async function main(): Promise<void> {
 
   // The agent loop runs locally; LLM calls are routed through the StackAI API
   // proxy (auth + rate limit server-side).
-  const llm = new LLMClient({
-    apiKey: config.apiKey,
-    baseURL: `${config.apiUrl}/api/v1`,
-  });
+  let llm: LLMClient;
+  try {
+    llm = resolveLLM(config);
+  } catch (err) {
+    console.error(`${err instanceof Error ? err.message : err} — using mimo.`);
+    llm = resolveLLM(config, "mimo");
+  }
   const runner = new AgentRunner({
     llm,
     skills: await loadSkills(),
     env: config.bankrKey ? { BANKR_API_KEY: config.bankrKey } : undefined,
   });
+  // Live model switch for the interactive /model command.
+  const switchModel = async (id: string): Promise<string> => {
+    try {
+      runner.setLLM(resolveLLM(config, id));
+      await setModel(id === "mimo" ? null : id);
+      return `Switched to ${id}.`;
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+    }
+  };
+  const currentModel = config.model ?? "mimo";
   const cwd = process.cwd();
 
   if (!first) {
@@ -190,7 +308,13 @@ async function main(): Promise<void> {
       return;
     }
     render(
-      <Interactive session={runner.session(cwd)} cwd={cwd} version={VERSION} />,
+      <Interactive
+        session={runner.session(cwd)}
+        cwd={cwd}
+        version={VERSION}
+        model={currentModel}
+        switchModel={switchModel}
+      />,
     );
     return;
   }
