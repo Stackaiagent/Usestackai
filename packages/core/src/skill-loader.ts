@@ -62,7 +62,15 @@ function parseList(value: string | undefined): string[] {
 export class SkillRegistry {
   private readonly skills = new Map<string, SkillMeta>();
 
-  async load(searchDirs: string[]): Promise<void> {
+  /**
+   * @param opts.excludeCapabilities Skip skills that declare any of these
+   *   capabilities (e.g. `["onchain_writes"]` to keep a surface read-only).
+   */
+  async load(
+    searchDirs: string[],
+    opts: { excludeCapabilities?: string[] } = {},
+  ): Promise<void> {
+    const deny = new Set(opts.excludeCapabilities ?? []);
     for (const base of searchDirs) {
       let entries;
       try {
@@ -83,12 +91,9 @@ export class SkillRegistry {
         const name = (meta.name || entry.name).trim();
         const description = (meta.description ?? "").trim();
         if (!description) continue; // a skill needs a description to be useful
-        this.skills.set(name, {
-          name,
-          description,
-          capabilities: parseList(meta.capabilities),
-          dir,
-        });
+        const capabilities = parseList(meta.capabilities);
+        if (deny.size && capabilities.some((c) => deny.has(c))) continue;
+        this.skills.set(name, { name, description, capabilities, dir });
       }
     }
   }

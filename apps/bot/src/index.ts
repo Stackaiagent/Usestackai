@@ -79,8 +79,10 @@ async function main(): Promise<void> {
   await fs.mkdir(WORK_DIR, { recursive: true });
 
   const skills = new SkillRegistry();
-  await skills.load(SKILL_DIRS);
-  console.log(`[bot] loaded ${skills.size} skill(s)`);
+  // Telegram stays READ-ONLY: skills that move funds (onchain_writes) are not
+  // loaded here. Trading/launch lives in the CLI where the user holds the key.
+  await skills.load(SKILL_DIRS, { excludeCapabilities: ["onchain_writes"] });
+  console.log(`[bot] loaded ${skills.size} read-only skill(s)`);
 
   const TELEGRAM_STYLE = [
     "You are replying inside a Telegram chat. Format for chat, NOT for a document:",
