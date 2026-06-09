@@ -1,0 +1,41 @@
+name: Publish CLI
+
+# Publishes `stackai` to npm with provenance (a signed attestation linking the
+# package to this repo + commit). Triggers on a version tag like v0.1.16, or run
+# manually from the Actions tab.
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance (OIDC)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter stackai typecheck
+
+      # Build core first; the CLI's prepublishOnly (tsup) bundles it + the skills.
+      - run: pnpm --filter @stackai/core build
+
+      - run: pnpm --filter stackai publish --provenance --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
