@@ -24,9 +24,13 @@ All of these are **read-only** and use **free public APIs** (no key needed).
 | Skill | What it does | Source |
 |---|---|---|
 | `token-report` | Price, market cap, liquidity, 24h volume for a token address | Dexscreener |
+| `token-search` | Find a token's address by name/symbol (pairs with token-report) | Dexscreener |
 | `token-safety` | Honeypot, buy/sell tax, ownership risks, holder concentration, LP lock | GoPlus |
 | `market-pulse` | Trending tokens and movers on a chain | GeckoTerminal |
+| `fresh-launches` | Freshly created pools / newly launched tokens on a chain | GeckoTerminal |
 | `defi-overview` | Total + per-chain TVL, top protocols | DeFiLlama |
+| `fear-greed` | Crypto Fear & Greed Index (market sentiment) | alternative.me |
+| `ens` | Resolve an ENS name ↔ address (with avatar) | ENS |
 | `bankr-launches` | Recent Bankr token launches and creator fees | Bankr public API |
 
 And one that uses **your own key** for real actions:
