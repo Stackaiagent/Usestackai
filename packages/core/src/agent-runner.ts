@@ -6,6 +6,7 @@ import type {
 import { LLMClient } from "./llm-client.js";
 import { FileAgent } from "./file-agent.js";
 import { SkillRegistry } from "./skill-loader.js";
+import { MemoryStore } from "./memory-store.js";
 import { SYSTEM_PROMPT } from "./system-prompt.js";
 import type { OnStep, ConfirmRun } from "./types.js";
 
@@ -30,6 +31,8 @@ export interface AgentRunnerOptions {
   systemExtra?: string;
   /** Extra env vars injected into every run_command (e.g. BANKR_API_KEY). */
   env?: Record<string, string>;
+  /** Persistent memory — injected into the prompt and enables remember/forget. */
+  memory?: MemoryStore;
 }
 
 export interface RunOptions {
@@ -173,6 +176,39 @@ const LOAD_SKILL_TOOL: ChatCompletionTool = {
   },
 };
 
+/** Advertised only when a MemoryStore is present. */
+const MEMORY_TOOLS: ChatCompletionTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "remember",
+      description:
+        "Save a durable fact or preference to memory so it persists across sessions. Use scope 'user' for personal preferences that apply everywhere, 'project' for facts about this codebase.",
+      parameters: {
+        type: "object",
+        properties: {
+          fact: { type: "string" },
+          scope: { type: "string", enum: ["user", "project"] },
+        },
+        required: ["fact"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "forget",
+      description:
+        "Remove saved memories that match a phrase. Use when a saved fact is wrong or the user asks to forget something.",
+      parameters: {
+        type: "object",
+        properties: { query: { type: "string" } },
+        required: ["query"],
+      },
+    },
+  },
+];
+
 /**
  * Main execution loop. Sends the prompt to MiMo, executes any requested file
  * tools, feeds the results back, and repeats until the model stops calling
@@ -184,6 +220,7 @@ export class AgentRunner {
   private readonly skills?: SkillRegistry;
   private readonly systemExtra?: string;
   private readonly env?: Record<string, string>;
+  private readonly memory?: MemoryStore;
 
   constructor(options: AgentRunnerOptions) {
     this.llm = options.llm;
@@ -191,6 +228,7 @@ export class AgentRunner {
     this.skills = options.skills;
     this.systemExtra = options.systemExtra;
     this.env = options.env;
+    this.memory = options.memory;
   }
 
   async run({ prompt, cwd, onStep, confirm }: RunOptions): Promise<RunResult> {
@@ -243,6 +281,9 @@ export class AgentRunner {
     if (this.skills?.size) {
       messages.push({ role: "system", content: this.skills.indexForPrompt() });
     }
+    if (this.memory) {
+      messages.push({ role: "system", content: await this.memory.contextBlock() });
+    }
     if (this.systemExtra?.trim()) {
       messages.push({ role: "system", content: this.systemExtra.trim() });
     }
@@ -260,7 +301,9 @@ export class AgentRunner {
     onStep?: OnStep,
     confirm?: ConfirmRun,
   ): Promise<RunResult> {
-    const tools = this.skills?.size ? [...TOOLS, LOAD_SKILL_TOOL] : TOOLS;
+    const tools = [...TOOLS];
+    if (this.skills?.size) tools.push(LOAD_SKILL_TOOL);
+    if (this.memory) tools.push(...MEMORY_TOOLS);
     for (let step = 1; step <= this.maxSteps; step++) {
       const { content, toolCalls } = await this.llm.streamChat(messages, {
         tools,
@@ -406,6 +449,17 @@ export class AgentRunner {
           return `Error: no skill named "${str(args.name)}". Available: ${avail || "(none)"}`;
         }
         return skill.body;
+      }
+      case "remember": {
+        if (!this.memory) return "Error: memory is not available.";
+        const scope = args.scope === "user" ? "user" : "project";
+        await this.memory.remember(str(args.fact), scope);
+        return `Remembered (${scope}).`;
+      }
+      case "forget": {
+        if (!this.memory) return "Error: memory is not available.";
+        const n = await this.memory.forget(str(args.query));
+        return n ? `Forgot ${n} item(s).` : "Nothing matched.";
       }
       default:
         return `Error: unknown tool ${name}`;

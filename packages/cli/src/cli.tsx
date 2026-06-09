@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { render } from "ink";
-import { LLMClient, AgentRunner, SkillRegistry } from "@stackai/core";
+import { LLMClient, AgentRunner, SkillRegistry, MemoryStore } from "@stackai/core";
 import {
   readConfig,
   writeConfig,
@@ -45,7 +45,7 @@ import { RunView } from "./ui/run-view.js";
 import { Interactive } from "./ui/interactive.js";
 import { LoginView } from "./ui/login-view.js";
 
-const VERSION = "0.1.14";
+const VERSION = "0.1.15";
 
 // Skills ship bundled next to the CLI (dist/skills) and users can install more
 // into ~/.stackai/skills. User skills override built-ins on a name clash.
@@ -54,11 +54,17 @@ const BUILTIN_SKILLS_DIR = path.join(
   "skills",
 );
 const USER_SKILLS_DIR = path.join(os.homedir(), ".stackai", "skills");
+const USER_MEMORY_FILE = path.join(os.homedir(), ".stackai", "memory.md");
 
 async function loadSkills(): Promise<SkillRegistry> {
   const skills = new SkillRegistry();
   await skills.load([BUILTIN_SKILLS_DIR, USER_SKILLS_DIR]);
   return skills;
+}
+
+/** Memory store for the given working dir (user-global + project-local). */
+function memoryFor(cwd: string): MemoryStore {
+  return new MemoryStore(USER_MEMORY_FILE, path.join(cwd, ".stackai", "memory.md"));
 }
 
 const HELP = `
@@ -70,6 +76,7 @@ const HELP = `
     $ stackai login                Log in (prompts for your API key)
     $ stackai login <api_key>      Log in directly
     $ stackai whoami               Show current user + usage
+    $ stackai memory               Show what the agent remembers (or memory clear)
     $ stackai skill                List available skills
     $ stackai skill add <repo> [p] Install a skill from a GitHub repo
     $ stackai skill remove <name>  Remove an installed skill
@@ -226,6 +233,31 @@ async function main(): Promise<void> {
     return;
   }
 
+  // memory — view / clear agent memory (user-global + project-local). No auth.
+  if (first === "memory") {
+    const mem = memoryFor(process.cwd());
+    if (args[1] === "clear") {
+      const scope = args[2] === "user" || args[2] === "project" ? args[2] : "all";
+      await mem.clear(scope);
+      console.log(`✓ Memory cleared (${scope}).`);
+      return;
+    }
+    const { user, project } = await mem.load();
+    if (!user.length && !project.length) {
+      console.log('No memories yet. The agent saves durable facts as you work — or just say "remember ...".');
+      return;
+    }
+    if (user.length) {
+      console.log("User memory:");
+      for (const i of user) console.log(`  - ${i}`);
+    }
+    if (project.length) {
+      console.log("Project memory:");
+      for (const i of project) console.log(`  - ${i}`);
+    }
+    return;
+  }
+
   // skill — list / install / remove skills (built-in + ~/.stackai/skills).
   if (first === "skill") {
     const sub = args[1];
@@ -319,6 +351,7 @@ async function main(): Promise<void> {
     llm,
     skills: await loadSkills(),
     env: config.bankrKey ? { BANKR_API_KEY: config.bankrKey } : undefined,
+    memory: memoryFor(process.cwd()),
   });
   // Live model switch for the interactive /model command.
   const switchModel = async (id: string): Promise<string> => {

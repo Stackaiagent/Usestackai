@@ -16,6 +16,7 @@ description: Every command, flag, and tool the StackAI CLI gives you.
 | `stackai login` / `login <key>` | Log in (masked prompt, or pass the key directly) |
 | `stackai logout` | Remove your saved API key |
 | `stackai whoami` | Show the current user + today's usage |
+| `stackai memory` | Show [agent memory](memory.md) (or `memory clear [user\|project]`) |
 | `stackai --help` / `--version` | Show commands / print the version |
 | `stackai auth <key> [url]` | Advanced: save a key with a custom API URL |
 
@@ -64,6 +65,7 @@ Inside a run, the agent has these tools:
 | `find_files` | Find files by glob pattern (e.g. `src/**/*.ts`) |
 | `run_command` | Run a shell command (tests, build, install, git) — **you approve each one** |
 | `load_skill` | Load a [skill's](skills.md) runbook when your request matches it |
+| `remember` / `forget` | Save or remove a durable fact in [memory](memory.md) |
 
 It works **only inside your current directory** and shows each action live (`● Write(file)`, `● Edit(file)`, `● Run(cmd)`, …) with a diff/output preview.
 

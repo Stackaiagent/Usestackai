@@ -16,6 +16,7 @@
 
 * [CLI reference](cli-reference.md)
 * [Project context (STACKAI.md)](project-context.md)
+* [Agent memory](memory.md)
 * [Models](models.md)
 
 ## Skills

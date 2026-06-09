@@ -4,6 +4,8 @@ export { FileAgent } from "./file-agent.js";
 export type { CommandResult } from "./file-agent.js";
 export { SkillRegistry } from "./skill-loader.js";
 export type { SkillMeta, LoadedSkill } from "./skill-loader.js";
+export { MemoryStore } from "./memory-store.js";
+export type { MemoryScope } from "./memory-store.js";
 export { AgentRunner, AgentSession } from "./agent-runner.js";
 export type {
   AgentRunnerOptions,
