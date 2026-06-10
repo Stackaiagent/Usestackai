@@ -31,6 +31,7 @@ All of these are **read-only** and use **free public APIs** (no key needed).
 | `defi-overview` | Total + per-chain TVL, top protocols | DeFiLlama |
 | `fear-greed` | Crypto Fear & Greed Index (market sentiment) | alternative.me |
 | `ens` | Resolve an ENS name ↔ address (with avatar) | ENS |
+| `virtuals` | Top Virtuals Protocol agents + search (mcap, holders, 24h) | Virtuals API |
 | `bankr-launches` | Recent Bankr token launches and creator fees | Bankr public API |
 
 And one that uses **your own key** for real actions:
