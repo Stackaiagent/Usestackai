@@ -8,9 +8,9 @@ import "./landing.css";
 const NAV_LIT = new Set([1, 2, 3, 5, 6, 7]);
 const MARQUEE = [
   "CLI agent", "VSCode extension", "Vibecoding", "File read/write",
-  "MiMo v2.5 Pro", "1M context", "API keys", "X auth",
+  "Any model", "1M context", "API keys", "X auth",
   "Rate limiting", "Telegram bot", "Crypto skills", "Download .zip", "CLI agent", "VSCode extension",
-  "Vibecoding", "File read/write", "MiMo v2.5 Pro", "1M context",
+  "Vibecoding", "File read/write", "Bring your own key", "1M context",
 ];
 
 export default function HomePage() {
@@ -47,7 +47,7 @@ export default function HomePage() {
         <div className="hero-left">
           <div className="hero-eyebrow">
             <span className="eyebrow-dot" />
-            Powered by Xiaomi MiMo v2.5 Pro · 1M context
+            Powered by any model you want · Claude · GPT · Gemini · Grok
           </div>
           <h1>Your code.<br />Your rules.<br /><em>AI speed.</em></h1>
           <p className="hero-sub">

@@ -77,10 +77,13 @@ export default function PrivacyPage() {
       <Section title="Service providers">
         <p>
           We share data only as needed with infrastructure providers that
-          process it on our behalf: the AI model provider (Xiaomi MiMo) to
-          generate responses, Supabase (database &amp; auth), Upstash (rate
-          limiting), and our hosting providers (Vercel, Railway). Each processes
-          data only to provide their service.
+          process it on our behalf: AI model providers (which may include
+          OpenAI, Anthropic, Google, xAI, Xiaomi, and OpenRouter, depending on
+          the model you or we select) to generate responses, Supabase (database
+          &amp; auth), Upstash (rate limiting), and our hosting providers
+          (Vercel, Railway). If you bring your own API key, requests are routed
+          directly to that provider. Each processes data only to provide their
+          service.
         </p>
       </Section>
 
